@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Kishore's AI Project Portfolio", layout="centered")
 
-st.title("👨‍💻 Kishore Penumuru – AI & Product Portfolio")
+st.title("👨‍💻 Kishore Penumuru – AI Project Portfolio")
 st.markdown("Welcome! Explore some of my recent projects in healthcare and finance using Generative AI.")
 
 st.divider()
