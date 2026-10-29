@@ -89,6 +89,15 @@ GROK_MAIL_PROMPT = (
     "send an email without explicit confirmation."
 )
 
+GROK_FINANCE_PROMPT = (
+    "You are Kishore's finance agent, working on behalf of Jarvis, his personal "
+    "assistant. Help him track spending, plan budgets, review bills and "
+    "subscriptions, and think through savings and investment decisions. You have "
+    "no access to his accounts: work only from what he tells or pastes to you, "
+    "and ask for the numbers you need. Show your arithmetic, be concise, and flag "
+    "when a decision deserves a licensed professional."
+)
+
 
 def default_agents() -> list[Agent]:
     """Agents Jarvis starts with on first launch."""
@@ -107,8 +116,26 @@ def default_agents() -> list[Agent]:
                 "Draft replies to anything urgent",
             ],
             endpoint="https://api.x.ai/v1",
-            model="grok-4",
+            model="",  # blank = newest Grok available to the key
             api_key_env="XAI_API_KEY",
             system_prompt=GROK_MAIL_PROMPT,
+        ),
+        Agent(
+            id="finance",
+            name="Grok Finance",
+            kind=KIND_GROK,
+            icon="💰",
+            description="Budgets, spending, bills, savings and investment questions.",
+            skills=["money", "finance", "finances", "budget", "spend", "spending", "spent",
+                    "expense", "bill", "invest", "investment", "savings", "salary", "tax",
+                    "loan", "debt", "subscription", "stock", "fund"],
+            quick_actions=[
+                "Help me build a monthly budget",
+                "Walk me through a monthly review of my finances",
+                "How big should my emergency fund be?",
+            ],
+            endpoint="https://api.x.ai/v1",
+            api_key_env="XAI_API_KEY",
+            system_prompt=GROK_FINANCE_PROMPT,
         ),
     ]

@@ -8,6 +8,8 @@ agent's reply as text, raising AgentError on any failure.
 from __future__ import annotations
 
 import os
+import re
+from dataclasses import replace
 
 import requests
 
@@ -81,8 +83,54 @@ def _chat_completions(agent: Agent, history: list[dict], base_url: str) -> str:
         raise AgentError(f"Unexpected response shape: {resp.text[:300]}") from exc
 
 
+_GROK_VERSION_RE = re.compile(r"^grok-(\d+(?:[.-]\d+)*)$")
+_latest_grok_cache: dict[str, str] = {}
+
+
+def pick_latest_grok(model_ids: list[str]) -> str:
+    """The highest-versioned plain Grok model (e.g. grok-4.6 over grok-4.1-fast).
+
+    Variants with a suffix (-fast, -mini, -vision) or a date snapshot
+    (grok-4-0709) are only used if no plain version is offered.
+    """
+    best, best_version = "", ()
+    for model_id in model_ids:
+        match = _GROK_VERSION_RE.match(model_id)
+        if not match:
+            continue
+        version = tuple(int(p) for p in re.split(r"[.-]", match.group(1)))
+        if any(p >= 100 for p in version):
+            continue
+        if version > best_version:
+            best, best_version = model_id, version
+    return best or next((m for m in sorted(model_ids, reverse=True) if m.startswith("grok-")), "")
+
+
+def latest_grok_model(base_url: str, key: str) -> str:
+    if base_url in _latest_grok_cache:
+        return _latest_grok_cache[base_url]
+    try:
+        resp = requests.get(base_url.rstrip("/") + "/models",
+                            headers={"Authorization": f"Bearer {key}"}, timeout=30)
+        resp.raise_for_status()
+        ids = [m["id"] for m in resp.json().get("data", [])]
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+        raise AgentError(f"Could not list Grok models; set a model name on the agent instead. ({exc})") from exc
+    model = pick_latest_grok(ids)
+    if not model:
+        raise AgentError("Your xAI key has no Grok models available.")
+    _latest_grok_cache[base_url] = model
+    return model
+
+
 def _grok(agent: Agent, history: list[dict]) -> str:
-    return _chat_completions(agent, history, agent.endpoint or XAI_BASE_URL)
+    base_url = agent.endpoint or XAI_BASE_URL
+    if not agent.model:
+        key = resolve_secret(agent.api_key_env)
+        if not key:
+            raise AgentError(f"Missing API key: set `{agent.api_key_env}` in env or Streamlit secrets.")
+        agent = replace(agent, model=latest_grok_model(base_url, key))
+    return _chat_completions(agent, history, base_url)
 
 
 def _openai_compatible(agent: Agent, history: list[dict]) -> str:

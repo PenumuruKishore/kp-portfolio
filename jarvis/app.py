@@ -22,7 +22,7 @@ from core.store import Store  # noqa: E402
 st.set_page_config(page_title="Jarvis", page_icon="🛰️", layout="wide")
 
 KIND_DEFAULTS = {
-    KIND_GROK: {"endpoint": "https://api.x.ai/v1", "model": "grok-4", "api_key_env": "XAI_API_KEY"},
+    KIND_GROK: {"endpoint": "https://api.x.ai/v1", "model": "", "api_key_env": "XAI_API_KEY"},
     KIND_CLAUDE: {"endpoint": "", "model": "claude-opus-5-5", "api_key_env": "ANTHROPIC_API_KEY"},
     KIND_OPENAI: {"endpoint": "https://api.openai.com/v1", "model": "", "api_key_env": "OPENAI_API_KEY"},
     KIND_WEBHOOK: {"endpoint": "https://", "model": "", "api_key_env": ""},
@@ -131,7 +131,7 @@ def agent_form(store: Store, agent: Agent, is_new: bool) -> None:
         )
         c3, c4 = st.columns(2)
         endpoint = c3.text_input("Endpoint / base URL", agent.endpoint, key=f"ep-{key}")
-        model = c4.text_input("Model", agent.model, key=f"model-{key}")
+        model = c4.text_input("Model (blank = newest Grok)" if agent.kind == KIND_GROK else "Model", agent.model, key=f"model-{key}")
         api_key_env = st.text_input(
             "Secret name (env var or Streamlit secret holding the API key/token; never the key itself)",
             agent.api_key_env, key=f"secret-{key}",

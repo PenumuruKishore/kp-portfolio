@@ -50,11 +50,11 @@ def test_disabled_agents_ignored():
 
 def test_store_seeds_defaults_and_roundtrips(tmp_path):
     store = Store(tmp_path)
-    assert [a.id for a in store.agents()] == ["grok"]
+    assert [a.id for a in store.agents()] == ["grok", "finance"]
     store.upsert_agent(CAL)
-    assert {a.id for a in Store(tmp_path).agents()} == {"grok", "calendar"}
+    assert {a.id for a in Store(tmp_path).agents()} == {"grok", "finance", "calendar"}
     store.delete_agent("calendar")
-    assert [a.id for a in store.agents()] == ["grok"]
+    assert [a.id for a in store.agents()] == ["grok", "finance"]
     store.save_settings({**store.settings(), "owner_name": "KP"})
     assert Store(tmp_path).settings()["owner_name"] == "KP"
 
@@ -102,6 +102,32 @@ def test_grok_sends_system_prompt_and_key(monkeypatch):
     assert url == "https://api.x.ai/v1/chat/completions"
     assert kwargs["headers"]["Authorization"] == "Bearer k"
     assert kwargs["json"]["messages"][0] == {"role": "system", "content": "be brief"}
+
+
+def test_pick_latest_grok():
+    ids = ["grok-3", "grok-4-0709", "grok-4.1-fast", "grok-4.6", "grok-4.5", "grok-2-vision"]
+    assert connectors.pick_latest_grok(ids) == "grok-4.6"
+    assert connectors.pick_latest_grok(["grok-4-1-fast", "grok-4-0709"]) == "grok-4-1-fast"
+    assert connectors.pick_latest_grok(["other"]) == ""
+
+
+def test_grok_blank_model_resolves_latest(monkeypatch):
+    monkeypatch.setenv("XAI_API_KEY", "k")
+    connectors._latest_grok_cache.clear()
+    agent = Agent(id="grok", name="G", kind=KIND_GROK, model="", api_key_env="XAI_API_KEY")
+    models = fake_response(json_data={"data": [{"id": "grok-4.5"}, {"id": "grok-4.6"}]})
+    models.raise_for_status = mock.Mock()
+    chat = fake_response(json_data={"choices": [{"message": {"content": "hi"}}]})
+    with mock.patch("requests.get", return_value=models), mock.patch("requests.post", return_value=chat) as post:
+        assert connectors.send(agent, [{"role": "user", "content": "yo"}]) == "hi"
+    assert post.call_args.kwargs["json"]["model"] == "grok-4.6"
+
+
+def test_finance_requests_route_to_finance():
+    from core.models import default_agents
+    agents = default_agents()
+    assert route("how much did I spend on food?", agents).agent.id == "finance"
+    assert route("summarize my unread emails", agents).agent.id == "grok"
 
 
 def test_grok_missing_key_is_clear_error(monkeypatch):

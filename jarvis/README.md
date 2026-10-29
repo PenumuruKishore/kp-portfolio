@@ -47,16 +47,30 @@ anyone who finds the URL can command your agents, including your email.
 API keys are read from environment variables or Streamlit secrets. Jarvis
 stores only the secret's *name*, never the key.
 
-### Connecting your existing Grok Gmail bot
+### The Grok agents
 
-The built-in Grok Mail agent calls the xAI API directly with an email-assistant
-prompt. That gives you Grok's reasoning but **not your Gmail**: the model can't
-see your inbox on its own. If your Grok bot already runs as a service with
-Gmail access, switch the agent's type to **Custom webhook** and point it at
-that service. Jarvis will POST:
+Jarvis ships with two agents, both powered by Grok through the xAI API (one
+`XAI_API_KEY` from console.x.ai covers both):
+
+- **📧 Grok Mail**: email triage, summaries and drafts.
+- **💰 Grok Finance**: budgets, spending, bills, savings and investment questions.
+
+Leave an agent's **Model** blank and Jarvis uses the newest Grok model your
+key can access, so it keeps working when xAI retires old models.
+
+These agents are separate from the Grok app on your phone or iPad. That app
+can't be controlled by other programs, and its Gmail connection stays inside
+it. Through the API, Grok sees only what you send it from Jarvis: it can't
+read your inbox or bank accounts, so paste in the emails or numbers you want
+help with.
+
+### Plugging in your own bot
+
+If you later run a bot as a web service, add it as a **Custom webhook**.
+Jarvis will POST:
 
 ```json
-{"agent": "grok", "message": "Summarize my unread emails", "history": [{"role": "user", "content": "..."}]}
+{"agent": "mybot", "message": "Summarize my unread emails", "history": [{"role": "user", "content": "..."}]}
 ```
 
 and expects back `{"reply": "..."}` (or plain text). Set **Secret name** to an
